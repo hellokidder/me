@@ -36,6 +36,17 @@ class TradingDB:
             "entry_gap_pct": "REAL", "best_return_pct": "REAL",
             "worst_return_pct": "REAL", "buy_day_return_pct": "REAL",
         }
+        # candidates 表新字段
+        cand_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(candidates)")]
+        cand_new = {
+            "seal_money": "REAL", "seal_time": "TEXT",
+            "reopen_count": "INTEGER DEFAULT 0",
+            "turnover_amount": "REAL", "float_market_cap": "REAL",
+        }
+        for col, typ in cand_new.items():
+            if col not in cand_cols:
+                self.conn.execute(f"ALTER TABLE candidates ADD COLUMN {col} {typ}")
+                logger.info("已为 candidates 添加 %s 列", col)
         for col, typ in new_cols.items():
             if col not in vr_cols:
                 self.conn.execute(f"ALTER TABLE verification_results ADD COLUMN {col} {typ}")
@@ -77,11 +88,15 @@ class TradingDB:
                 """INSERT OR REPLACE INTO candidates
                 (date, code, name, close, change_pct, volume_ratio, turnover_rate,
                  volume_vs_5d_avg, is_limit_up, consecutive_boards, on_dragon_tiger,
-                 industry, sonnet_score, sonnet_theme, source)
+                 industry, sonnet_score, sonnet_theme,
+                 seal_money, seal_time, reopen_count, turnover_amount, float_market_cap,
+                 source)
                 VALUES (:date, :code, :name, :close, :change_pct, :volume_ratio,
                         :turnover_rate, :volume_vs_5d_avg, :is_limit_up,
                         :consecutive_boards, :on_dragon_tiger, :industry,
-                        :sonnet_score, :sonnet_theme, :source)""",
+                        :sonnet_score, :sonnet_theme,
+                        :seal_money, :seal_time, :reopen_count, :turnover_amount,
+                        :float_market_cap, :source)""",
                 {
                     "date": date,
                     "code": c.get("code", ""),
@@ -97,6 +112,11 @@ class TradingDB:
                     "industry": c.get("industry", ""),
                     "sonnet_score": c.get("sonnet_score"),
                     "sonnet_theme": c.get("sonnet_theme"),
+                    "seal_money": c.get("seal_money"),
+                    "seal_time": c.get("seal_time"),
+                    "reopen_count": c.get("reopen_count", 0),
+                    "turnover_amount": c.get("turnover_amount"),
+                    "float_market_cap": c.get("float_market_cap"),
                     "source": source,
                 },
             )

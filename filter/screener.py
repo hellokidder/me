@@ -102,6 +102,11 @@ class StockScreener:
                 "technical_note": tech_note or "",
                 "sonnet_score": None,
                 "sonnet_theme": None,
+                "seal_money": stock.get("seal_money"),
+                "seal_time": stock.get("seal_time"),
+                "reopen_count": stock.get("reopen_count", 0),
+                "turnover_amount": stock.get("turnover_amount"),
+                "float_market_cap": stock.get("float_market_cap"),
             })
 
         # 4. 过滤高连板（5+连板回撤风险极大）
@@ -111,12 +116,29 @@ class StockScreener:
             if c.get("consecutive_boards", 0) <= max_boards
         ]
 
-        # 5. 排序: 连板数×3 + 量比 + 换手率×0.1（v1 公式）
+        # 5. 排序: v2 优化评分公式
         def _score(x):
             boards = x.get("consecutive_boards", 0)
             vol = x.get("volume_vs_5d_avg") or 0
-            tr = x.get("turnover_rate") or 0
-            return boards * 3 + vol + tr * 0.1
+            change = abs(x.get("change_pct") or 0)
+            score = boards * 1.5 + vol * 0.2 - (2.0 if change > 7 else 0)
+            # 首板优先 (1连板 T+1 延续性最好)
+            if boards == 1:
+                score += 3.0
+            elif boards >= 3:
+                score -= 2.0
+            # 龙虎榜加分
+            if x.get("on_dragon_tiger"):
+                score += 2.0
+            # 封板时间: 早封 +2, 尾盘封 -3
+            st = x.get("seal_time") or ""
+            if st and len(st) >= 4:
+                hhmm = int(st[:4])
+                if hhmm <= 1000:
+                    score += 2.0
+                elif hhmm >= 1400:
+                    score -= 3.0
+            return score
 
         candidates.sort(key=_score, reverse=True)
 
@@ -133,7 +155,7 @@ class StockScreener:
     @staticmethod
     def _is_tradable(code: str) -> bool:
         """排除北交所（8xxxxx, 920xxx）和科创板（688xxx, 689xxx）。"""
-        return not code.startswith(('688', '689', '8', '920'))
+        return not code.startswith(('688', '689', '8', '920', '300', '301'))
 
     def _build_universe(self, market_data: dict) -> list[dict]:
         universe = {}
@@ -156,6 +178,11 @@ class StockScreener:
                         "is_limit_up": True,
                         "on_dragon_tiger": False,
                         "industry": str(row.get("所属行业", row.get("industry", ""))),
+                        "seal_money": self._safe_float(row.get("封板资金")),
+                        "seal_time": str(row.get("首次封板时间", "")) if row.get("首次封板时间") else None,
+                        "reopen_count": int(row.get("炸板次数", 0)),
+                        "turnover_amount": self._safe_float(row.get("成交额")),
+                        "float_market_cap": self._safe_float(row.get("流通市值")),
                     }
 
         # 强势股池

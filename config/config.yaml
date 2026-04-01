@@ -4,7 +4,7 @@ screening:
   turnover_rate_max: 15.0
   volume_vs_5d_avg_min: 2.0
   max_candidates: 15
-  min_candidates: 10
+  min_candidates: 5
   exclude_st: true
   exclude_new_days: 20
   max_price: 100.0
@@ -27,8 +27,8 @@ market:
 
 verification:
   win_threshold_pct: 0.0       # T+1收盘不亏就算赢
-  entry_gap_max_pct: 3.0       # T日开盘高开超3%放弃
-  entry_gap_min_pct: -2.0      # T日开盘低开超-2%放弃（低开太多说明弱）
+  entry_gap_max_pct: 5.0       # T日开盘高开超5%放弃（v2优化: 原3%→5%）
+  entry_gap_min_pct: 1.0       # T日开盘高开不足1%放弃（v2优化: 原-2%→+1%，只买被资金确认的票）
   # 注意: T+1超短线无止损（T日无法卖出）
 
 backtest:

@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS candidates (
     industry TEXT,
     sonnet_score REAL,
     sonnet_theme TEXT,
+    seal_money REAL,             -- 封板资金(元)
+    seal_time TEXT,              -- 首次封板时间(HHMMSS)
+    reopen_count INTEGER DEFAULT 0,  -- 炸板次数
+    turnover_amount REAL,        -- 成交额(元)
+    float_market_cap REAL,       -- 流通市值(元)
     source TEXT DEFAULT 'live',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(date, code, source)
