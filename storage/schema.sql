@@ -58,19 +58,29 @@ CREATE TABLE IF NOT EXISTS recommendations (
 
 CREATE TABLE IF NOT EXISTS verification_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    rec_date TEXT NOT NULL,
-    verify_date TEXT NOT NULL,
+    rec_date TEXT NOT NULL,       -- T-1: 分析日（推荐基于此日收盘数据）
+    buy_date TEXT,                -- T: 买入日
+    verify_date TEXT NOT NULL,    -- T+1: 卖出/评估日
     code TEXT NOT NULL,
     name TEXT NOT NULL,
-    rec_close REAL,
-    t1_open REAL,
-    t1_high REAL,
-    t1_low REAL,
-    t1_close REAL,
-    open_return_pct REAL,
-    max_return_pct REAL,
-    min_return_pct REAL,
-    close_return_pct REAL,
+    rec_close REAL,              -- T-1 收盘价
+    buy_price REAL,              -- T日 实际买入价（开盘价）
+    buy_open REAL,               -- T日 开盘价
+    buy_high REAL,               -- T日 最高价
+    buy_low REAL,                -- T日 最低价
+    buy_close REAL,              -- T日 收盘价
+    t1_open REAL,                -- T+1 开盘
+    t1_high REAL,                -- T+1 最高
+    t1_low REAL,                 -- T+1 最低
+    t1_close REAL,               -- T+1 收盘
+    entry_gap_pct REAL,          -- 入场缺口: (T日开盘 - T-1收盘) / T-1收盘
+    best_return_pct REAL,        -- 最好情况: (T+1最高 - 买入价) / 买入价
+    worst_return_pct REAL,       -- 最坏情况: (T+1最低 - 买入价) / 买入价
+    close_return_pct REAL,       -- 收盘收益: (T+1收盘 - 买入价) / 买入价
+    buy_day_return_pct REAL,     -- T日收益: (T日收盘 - 买入价) / 买入价
+    open_return_pct REAL,        -- 兼容旧字段
+    max_return_pct REAL,         -- 兼容旧字段
+    min_return_pct REAL,         -- 兼容旧字段
     win INTEGER DEFAULT 0,
     entry_feasible INTEGER DEFAULT 0,
     strategy_return_pct REAL,

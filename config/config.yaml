@@ -26,9 +26,10 @@ market:
       name: "创业板指"
 
 verification:
-  win_threshold_pct: 2.0
-  entry_gap_max_pct: 5.0
-  stop_loss_pct: 3.0
+  win_threshold_pct: 0.0       # T+1收盘不亏就算赢
+  entry_gap_max_pct: 3.0       # T日开盘高开超3%放弃
+  entry_gap_min_pct: -2.0      # T日开盘低开超-2%放弃（低开太多说明弱）
+  # 注意: T+1超短线无止损（T日无法卖出）
 
 backtest:
   rate_limit_seconds: 2

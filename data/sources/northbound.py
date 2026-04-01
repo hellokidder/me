@@ -15,8 +15,14 @@ def fetch_northbound_flow(date: str) -> dict:
             if not matched.empty:
                 val = matched.iloc[-1].get("当日成交净买额")
             else:
-                val = df.iloc[-1].get("当日成交净买额")
-                logger.info("未匹配到 %s 北向数据，使用最近数据", date)
+                # 只用 <= target 的数据，防止前瞻偏差
+                df_filtered = df[df["日期"].astype(str) <= target]
+                if not df_filtered.empty:
+                    val = df_filtered.iloc[-1].get("当日成交净买额")
+                    logger.info("未匹配到 %s 北向数据，使用最近历史数据", date)
+                else:
+                    val = None
+                    logger.warning("无 %s 及之前的北向资金数据", date)
 
             import math
             if val is not None and not (isinstance(val, float) and math.isnan(val)):

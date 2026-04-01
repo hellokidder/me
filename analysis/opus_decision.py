@@ -9,16 +9,24 @@ import anthropic
 logger = logging.getLogger("trading.analysis.opus")
 
 SYSTEM_PROMPT = """你是一位资深A股超短线交易策略师，拥有20年短线交易经验。
-你需要从分析师的初步分析中做最终决策，精选4-6只最具上涨潜力的个股。
+你需要从分析师的初步分析中做最终决策，精选4只个股加入今日观察名单。
+
+重要：这是观察名单，不是直接买入推荐。用户会在开盘后9:30-10:00观察走势，确认强势后才入场。
 
 决策原则：
-1. 优先选择低位首板或二板股（风险可控），谨慎对待三板以上高位股
+1. 优先选择首板或二板股（1-2连板最优，风险收益比最好）
 2. 题材必须有持续性催化（政策、事件、资金验证）
 3. 量价配合是核心：放量突破优于缩量上涨
 4. 龙虎榜有知名游资或机构席位加分
 5. 分散题材：不要把所有推荐集中在同一个题材
-6. 大盘情绪弱时（评分<5），减少推荐数量至2-3只，提高确定性门槛
-7. 开盘涨超5%的不建议追入
+6. 大盘情绪弱时（评分<5），减少至2只，提高确定性门槛
+7. 谨慎对待三板以上高位股（均值回归风险大）
+
+入场条件设定：
+- 为每只股票指定具体的入场区间（开盘涨跌幅范围），超出区间则放弃
+- 默认入场区间：开盘涨幅在 -2% 到 +3% 之间
+- 高确定性标的可放宽上限，弱确定性标的应收窄区间
+- 注明T日需要观察的确认信号（如：开盘30分钟内站稳均价线、量能持续放大等）
 
 你必须以严格的JSON格式输出，不要在JSON之外包含任何文本。"""
 
@@ -105,7 +113,7 @@ class OpusDecisionMaker:
 - 炸板率：{sentiment.get('failed_limit_rate', 'N/A')}%
 - 北向资金：{market_data.get('northbound', {}).get('northbound_net', 'N/A')}亿
 
-请做出最终决策，输出JSON：
+请输出观察名单（4只），JSON格式：
 {{
   "market_score": 7,
   "market_assessment": "今日市场情绪评估...",
@@ -116,9 +124,12 @@ class OpusDecisionMaker:
       "name": "示例股票",
       "opus_score": 9.0,
       "theme": "题材",
-      "reason": "详细推荐理由（3-5句话，包含量价分析、题材逻辑、资金面验证）",
+      "reason": "入选观察名单理由（3-5句话，包含量价分析、题材逻辑、资金面验证）",
       "risk_warning": "具体风险提示（2-3点）",
-      "entry_strategy": "建议介入方式和价位参考",
+      "entry_strategy": "9:30-10:00观察，开盘涨幅-2%~+3%区间可入场，需确认XXX信号",
+      "entry_gap_min": -2.0,
+      "entry_gap_max": 3.0,
+      "confirm_signal": "开盘30分钟内需要观察到的确认信号（如站稳均价线、量能放大等）",
       "position_pct": 20
     }}
   ],
@@ -151,7 +162,7 @@ class OpusDecisionMaker:
     def _fallback_from_sonnet(self, sonnet_result: dict) -> dict:
         scored = sonnet_result.get("scored_candidates", [])
         scored_sorted = sorted(scored, key=lambda x: x.get("score", 0), reverse=True)
-        top = scored_sorted[:6]
+        top = scored_sorted[:4]
 
         recommendations = []
         for i, c in enumerate(top, 1):
@@ -163,16 +174,19 @@ class OpusDecisionMaker:
                 "theme": c.get("matched_theme", ""),
                 "reason": c.get("analysis", ""),
                 "risk_warning": c.get("risk", ""),
-                "entry_strategy": "建议观察开盘情况，涨超5%放弃",
+                "entry_strategy": "9:30-10:00观察，开盘涨幅-2%~+3%区间可入场",
+                "entry_gap_min": -2.0,
+                "entry_gap_max": 3.0,
+                "confirm_signal": "需确认开盘30分钟量能不低于昨日同期",
                 "position_pct": 15,
             })
 
         return {
             "market_score": sonnet_result.get("market_score", 5),
-            "market_assessment": "【降级模式】Opus 不可用，基于 Sonnet 分析结果生成",
+            "market_assessment": "【降级模式】Opus 不可用，基于 Sonnet 分析结果生成观察名单",
             "recommendations": recommendations,
-            "risk_summary": "降级模式下推荐确定性较低，建议降低仓位",
-            "position_advice": "建议总仓位不超过40%",
+            "risk_summary": "降级模式下确定性较低，建议降低仓位，严格执行入场条件",
+            "position_advice": "建议总仓位不超过30%",
         }
 
     def _empty_result(self) -> dict:

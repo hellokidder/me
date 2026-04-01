@@ -28,6 +28,18 @@ class TradingDB:
             if "source" not in cols:
                 self.conn.execute(f"ALTER TABLE {table} ADD COLUMN source TEXT DEFAULT 'live'")
                 logger.info("已为 %s 表添加 source 列", table)
+        # 为 verification_results 添加新字段
+        vr_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(verification_results)")]
+        new_cols = {
+            "buy_date": "TEXT", "buy_price": "REAL",
+            "buy_open": "REAL", "buy_high": "REAL", "buy_low": "REAL", "buy_close": "REAL",
+            "entry_gap_pct": "REAL", "best_return_pct": "REAL",
+            "worst_return_pct": "REAL", "buy_day_return_pct": "REAL",
+        }
+        for col, typ in new_cols.items():
+            if col not in vr_cols:
+                self.conn.execute(f"ALTER TABLE verification_results ADD COLUMN {col} {typ}")
+                logger.info("已为 verification_results 添加 %s 列", col)
 
     # ------------------------------------------------------------------
     # 大盘数据
@@ -151,17 +163,22 @@ class TradingDB:
             r["source"] = source
             self.conn.execute(
                 """INSERT OR REPLACE INTO verification_results
-                (rec_date, verify_date, code, name, rec_close,
+                (rec_date, buy_date, verify_date, code, name, rec_close,
+                 buy_price, buy_open, buy_high, buy_low, buy_close,
                  t1_open, t1_high, t1_low, t1_close,
-                 open_return_pct, max_return_pct, min_return_pct, close_return_pct,
+                 entry_gap_pct, best_return_pct, worst_return_pct,
+                 close_return_pct, buy_day_return_pct,
+                 open_return_pct, max_return_pct, min_return_pct,
                  win, entry_feasible, strategy_return_pct,
                  opus_score, rank, entry_strategy, source)
-                VALUES (:rec_date, :verify_date, :code, :name, :rec_close,
+                VALUES (:rec_date, :buy_date, :verify_date, :code, :name, :rec_close,
+                        :buy_price, :buy_open, :buy_high, :buy_low, :buy_close,
                         :t1_open, :t1_high, :t1_low, :t1_close,
+                        :entry_gap_pct, :best_return_pct, :worst_return_pct,
+                        :close_return_pct, :buy_day_return_pct,
                         :open_return_pct, :max_return_pct, :min_return_pct,
-                        :close_return_pct, :win, :entry_feasible,
-                        :strategy_return_pct, :opus_score, :rank,
-                        :entry_strategy, :source)""",
+                        :win, :entry_feasible, :strategy_return_pct,
+                        :opus_score, :rank, :entry_strategy, :source)""",
                 r,
             )
         self.conn.commit()

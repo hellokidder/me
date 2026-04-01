@@ -265,7 +265,7 @@ class BacktestRunner:
                 "theme": c.get("matched_theme", ""),
                 "reason": c.get("analysis", ""),
                 "risk_warning": c.get("risk", ""),
-                "entry_strategy": "观察开盘，涨超5%放弃",
+                "entry_strategy": "9:30-10:00观察，开盘涨幅-2%~+3%区间可入场",
                 "position_pct": 20,
             })
         self.db.save_recommendations(date, recs, source="backtest")
@@ -284,14 +284,21 @@ class BacktestRunner:
             f"**模式**: {self.mode.value}",
             f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
+            "## 操作逻辑",
+            "",
+            "盘前推荐(基于T-1收盘数据) → T日开盘买入(涨幅<3%入场) → T+1评估卖出",
+            "",
             "## 总体统计",
             "",
             f"| 指标 | 值 |",
             f"|------|-----|",
             f"| 总推荐数 | {stats.get('total_recs', 0)} |",
-            f"| 胜率 | {stats.get('win_rate', 0):.1f}% |",
-            f"| 平均收益 | {stats.get('avg_close_return', 0):.2f}% |",
-            f"| 平均最大收益 | {stats.get('avg_max_return', 0):.2f}% |",
+            f"| 可入场数 | {stats.get('total_feasible', stats.get('total_recs', 0))} |",
+            f"| 胜率(T+1收盘≥2%) | {stats.get('win_rate', 0):.1f}% |",
+            f"| T+1 平均收盘收益 | {stats.get('avg_close_return', 0):.2f}% |",
+            f"| T+1 平均最好情况 | {stats.get('avg_best_return', stats.get('avg_max_return', 0)):.2f}% |",
+            f"| T+1 平均最坏情况 | {stats.get('avg_worst_return', 0):.2f}% |",
+            f"| T+1 平均策略收益 | {stats.get('avg_strategy_return', 0):.2f}% |",
             f"| 最大单笔亏损 | {stats.get('max_single_loss', 0):.2f}% |",
             f"| 最大单笔盈利 | {stats.get('max_single_gain', 0):.2f}% |",
             f"| 可入场率 | {stats.get('entry_feasible_rate', 0):.1f}% |",
@@ -305,17 +312,26 @@ class BacktestRunner:
             lines.extend([
                 "## 逐日明细",
                 "",
-                "| 日期 | 代码 | 名称 | 评分 | T+1收益 | 最大收益 | 胜负 |",
-                "|------|------|------|------|---------|---------|------|",
+                "| 分析日 | 买入日 | 代码 | 名称 | 评分 | 入场缺口 | 最好 | 最坏 | T+1收盘 | 策略 | 可入场 |",
+                "|--------|--------|------|------|------|----------|------|------|---------|------|--------|",
             ])
             for r in vr:
-                win_mark = "W" if r["win"] else "L"
+                feasible = "Y" if r.get("entry_feasible") else "N"
+                gap = r.get("entry_gap_pct", r.get("open_return_pct", 0))
+                best = r.get("best_return_pct", r.get("max_return_pct", 0))
+                worst = r.get("worst_return_pct", r.get("min_return_pct", 0))
+                close_r = r.get("close_return_pct", 0)
+                strat = r.get("strategy_return_pct", 0)
+                buy_d = r.get("buy_date", "")
                 lines.append(
-                    f"| {r['rec_date']} | {r['code']} | {r['name']} "
+                    f"| {r['rec_date']} | {buy_d} | {r['code']} | {r['name']} "
                     f"| {r.get('opus_score', '-')} "
-                    f"| {r['close_return_pct']:.1f}% "
-                    f"| {r['max_return_pct']:.1f}% "
-                    f"| {win_mark} |"
+                    f"| {gap:+.1f}% "
+                    f"| {best:+.1f}% "
+                    f"| {worst:+.1f}% "
+                    f"| {close_r:+.1f}% "
+                    f"| {strat:+.1f}% "
+                    f"| {feasible} |"
                 )
             lines.append("")
 
