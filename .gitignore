@@ -1,0 +1,7 @@
+config/.env
+storage/*.db
+logs/
+output/
+__pycache__/
+*.pyc
+.venv/

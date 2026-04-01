@@ -1,0 +1,39 @@
+screening:
+  volume_ratio_min: 2.0
+  turnover_rate_min: 3.0
+  turnover_rate_max: 15.0
+  volume_vs_5d_avg_min: 2.0
+  max_candidates: 15
+  min_candidates: 10
+  exclude_st: true
+  exclude_new_days: 20
+  max_price: 100.0
+
+ai:
+  sonnet_model: "claude-sonnet-4-5"
+  opus_model: "claude-opus-4-6"
+  sonnet_max_tokens: 4096
+  opus_max_tokens: 8192
+  temperature: 0.3
+
+market:
+  indices:
+    - symbol: "sh000001"
+      name: "上证指数"
+    - symbol: "sz399001"
+      name: "深证成指"
+    - symbol: "sz399006"
+      name: "创业板指"
+
+verification:
+  win_threshold_pct: 2.0
+  entry_gap_max_pct: 5.0
+  stop_loss_pct: 3.0
+
+backtest:
+  rate_limit_seconds: 2
+
+paths:
+  output_dir: "output"
+  log_dir: "logs"
+  db_path: "storage/trading.db"
